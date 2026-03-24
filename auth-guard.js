@@ -1,9 +1,7 @@
 ﻿const COOKIE_NAME = "stat_auth";
 
 function readCookie(cookieHeader, cookieName) {
-  if (!cookieHeader) {
-    return "";
-  }
+  if (!cookieHeader) return "";
   const parts = cookieHeader.split(";");
   for (const part of parts) {
     const [rawName, ...rest] = part.trim().split("=");
@@ -15,12 +13,36 @@ function readCookie(cookieHeader, cookieName) {
 }
 
 function isPublicPath(pathname) {
-  if (pathname === "/login" || pathname === "/login.html") {
+  // 登录页
+  if (pathname === "/login" || pathname === "/login.html") return true;
+
+  // Netlify functions
+  if (
+    pathname === "/.netlify/functions/login" ||
+    pathname === "/.netlify/functions/logout"
+  ) {
     return true;
   }
-  if (pathname === "/.netlify/functions/login" || pathname === "/.netlify/functions/logout") {
+
+  // 常见静态资源
+  if (
+    pathname.endsWith(".js") ||
+    pathname.endsWith(".css") ||
+    pathname.endsWith(".png") ||
+    pathname.endsWith(".jpg") ||
+    pathname.endsWith(".jpeg") ||
+    pathname.endsWith(".gif") ||
+    pathname.endsWith(".webp") ||
+    pathname.endsWith(".ico") ||
+    pathname.endsWith(".svg") ||
+    pathname.endsWith(".woff") ||
+    pathname.endsWith(".woff2") ||
+    pathname.endsWith(".ttf") ||
+    pathname.endsWith(".map")
+  ) {
     return true;
   }
+
   return false;
 }
 
