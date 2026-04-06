@@ -223,7 +223,7 @@
     }
 
     .controls-primary {
-      grid-template-columns: 1fr;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
       justify-content: stretch;
     }
 
@@ -248,6 +248,13 @@
       text-align: center;
     }
 
+    .field.flat-winning-field label {
+      color: #1e40af;
+      font-size: 14px;
+      letter-spacing: 0.2px;
+      text-align: center;
+    }
+
     .winning-input {
       height: 46px !important;
       font-size: 24px !important;
@@ -263,6 +270,18 @@
 
     .winning-input:focus {
       box-shadow: 0 0 0 5px rgba(59, 130, 246, 0.22), 0 10px 20px rgba(37, 99, 235, 0.2) !important;
+    }
+
+    .flat-winning-input {
+      height: 46px !important;
+      font-size: 18px !important;
+      font-weight: 700;
+      text-align: center;
+      color: #1e3a8a !important;
+      background: linear-gradient(180deg, #ffffff, #eff6ff) !important;
+      border: 2px solid #60a5fa !important;
+      box-shadow: 0 8px 20px rgba(37, 99, 235, 0.18);
+      width: 100%;
     }
 
     input[type="number"],
@@ -377,6 +396,11 @@
       grid-template-columns: repeat(12, minmax(0, 1fr));
       align-content: start;
       gap: 4px;
+    }
+
+    .multi-col-picker.open .flat-col-menu {
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      width: min(420px, calc(100vw - 16px));
     }
 
     .multi-col-option {
@@ -564,6 +588,24 @@
     }
 
     .column-grid {
+      display: grid;
+      grid-template-columns: repeat(12, 90px);
+      gap: 10px;
+      width: max-content;
+    }
+
+    .flat-grid-wrap {
+      margin-top: 12px;
+    }
+
+    .flat-grid-title {
+      margin: 0 0 8px;
+      font-size: 13px;
+      color: var(--muted);
+      font-weight: 600;
+    }
+
+    .flat-grid {
       display: grid;
       grid-template-columns: repeat(12, 90px);
       gap: 10px;
@@ -1058,6 +1100,13 @@
       font-weight: 800;
     }
 
+    .group-col-tag.mark-flat {
+      background: #1e40af;
+      color: #f8fbff;
+      border-color: #1d4ed8;
+      font-weight: 800;
+    }
+
     .group-col-tag.winner {
       box-shadow: 0 0 0 2px rgba(217, 119, 6, 0.25);
       border-color: #d97706;
@@ -1168,6 +1217,19 @@
       gap: 4px;
     }
 
+    .row-inline-flat-grid {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 4px;
+    }
+
+    .row-inline-grid-title {
+      font-size: 12px;
+      color: #64748b;
+      font-weight: 600;
+      margin: 2px 0 0;
+    }
+
     .row-inline-col-btn {
       border: 1px solid #dbeafe;
       border-radius: 8px;
@@ -1243,6 +1305,11 @@
           <label for="winningCol">中奖号码（1-49）</label>
           <input id="winningCol" class="winning-input" type="number" min="1" max="49" step="1" value="">
         </div>
+        <div class="field flat-winning-field">
+          <label for="flatWinningCols">平码中奖（固定6码）</label>
+          <input id="flatWinningCols" class="flat-winning-input" type="text" inputmode="numeric" placeholder="例如 1,8,12,23,35,49" value="">
+          <div class="hint">平码按7码判断：单个中奖号码 + 平码6码，任意命中都按对应平位 x2 计算</div>
+        </div>
       </div>
     </section>
 
@@ -1257,6 +1324,12 @@
           <span class="arrow">&#9662;</span>
           <span id="toggleColumnRowsText">展开剩余行</span>
         </button>
+      </div>
+      <div class="flat-grid-wrap">
+        <div class="flat-grid-title">平1-平12 展示板</div>
+        <div class="column-scroll">
+          <div id="flatGrid" class="flat-grid"></div>
+        </div>
       </div>
     </section>
 
@@ -1277,6 +1350,17 @@
             <div id="rowColMenu" class="multi-col-menu" role="listbox" aria-multiselectable="true"></div>
           </div>
           <div class="multi-col-select-hint">可单选或多选，同一金额会同时记录到所有已选号</div>
+        </div>
+        <div class="field">
+          <label for="rowFlatTrigger">平码</label>
+          <div id="rowFlatPicker" class="multi-col-picker">
+            <button id="rowFlatTrigger" type="button" class="multi-col-trigger" aria-haspopup="listbox" aria-expanded="false">
+              <span id="rowFlatTriggerText" class="multi-col-trigger-text"></span>
+              <span class="multi-col-trigger-arrow">&#9662;</span>
+            </button>
+            <div id="rowFlatMenu" class="multi-col-menu flat-col-menu" role="listbox" aria-multiselectable="true"></div>
+          </div>
+          <div class="multi-col-select-hint">可单选或多选平码（平1-平12），中奖按 x2</div>
         </div>
         <div class="field">
           <label for="rowValueInput">金额</label>
@@ -1358,13 +1442,22 @@
     const ACCESS_PASSWORD = "";
     const FIXED_REBATE_RATE = 0.036;
     const FIXED_MULTIPLIER = 47;
+    const FLAT_MULTIPLIER = 2;
     const STORAGE_KEY = "rebate_tool_data_v1";
     const RED_MARKS = new Set([1, 2, 7, 8, 12, 13, 18, 19, 23, 24, 29, 30, 34, 35, 40, 45, 46]);
     const BLUE_MARKS = new Set([3, 4, 9, 10, 14, 15, 20, 25, 26, 31, 36, 37, 41, 42, 47, 48]);
     const GREEN_MARKS = new Set([5, 6, 11, 16, 17, 21, 22, 27, 28, 32, 33, 38, 39, 43, 44, 49]);
     const values = new Array(COL_COUNT).fill(0);
+    const FLAT_GROUPS = Array.from({ length: 12 }, (_, index) => {
+      const group = [];
+      for (let colNo = index + 1; colNo <= COL_COUNT; colNo += 12) {
+        group.push(colNo);
+      }
+      return group;
+    });
 
     const columnGridEl = document.getElementById("columnGrid");
+    const flatGridEl = document.getElementById("flatGrid");
     const columnRowsViewportEl = document.getElementById("columnRowsViewport");
     const toggleColumnRowsBtnEl = document.getElementById("toggleColumnRowsBtn");
     const toggleColumnRowsTextEl = document.getElementById("toggleColumnRowsText");
@@ -1377,6 +1470,7 @@
     const authErrorEl = document.getElementById("authError");
 
     const winningColEl = document.getElementById("winningCol");
+    const flatWinningColsEl = document.getElementById("flatWinningCols");
     const clearDataBtnEl = document.getElementById("clearDataBtn");
     const pageNavBtnEls = Array.from(document.querySelectorAll("button[data-page-no]"));
 
@@ -1390,6 +1484,10 @@
     const rowColTriggerEl = document.getElementById("rowColTrigger");
     const rowColTriggerTextEl = document.getElementById("rowColTriggerText");
     const rowColMenuEl = document.getElementById("rowColMenu");
+    const rowFlatPickerEl = document.getElementById("rowFlatPicker");
+    const rowFlatTriggerEl = document.getElementById("rowFlatTrigger");
+    const rowFlatTriggerTextEl = document.getElementById("rowFlatTriggerText");
+    const rowFlatMenuEl = document.getElementById("rowFlatMenu");
     const rowValueInputEl = document.getElementById("rowValueInput");
     const addPairBtnEl = document.getElementById("addPairBtn");
     const addRowBtnEl = document.getElementById("addRowBtn");
@@ -1401,14 +1499,19 @@
     const columnCards = [];
     const sumCells = [];
     const columnValueEls = [];
+    const flatCards = [];
+    const flatSumCells = [];
+    const flatValueEls = [];
     const rowEntries = [];
     const draftRowGroups = [];
     const rowInlineDraft = {
       rowId: 0,
       amountText: "",
-      selectedCols: new Set()
+      selectedCols: new Set(),
+      selectedFlats: new Set()
     };
     const draftSelectedCols = new Set();
+    const draftSelectedFlatNos = new Set();
     let nextRowId = 1;
     let nextDraftGroupId = 1;
     let isColumnRowsCollapsed = true;
@@ -1450,15 +1553,34 @@
 
     function rebuildColumnDisplayAndValues() {
       const groupedValues = Array.from({ length: COL_COUNT }, () => []);
+      const flatGroupedValues = Array.from({ length: FLAT_GROUPS.length }, () => []);
+      const flatTotals = new Array(FLAT_GROUPS.length).fill(0);
       values.fill(0);
 
       rowEntries.forEach((entry, rowIndex) => {
+        const rowFlatSums = new Array(FLAT_GROUPS.length).fill(0);
         entry.groups.forEach((group, groupIndex) => {
-          const colIndex = group.colNo - 1;
-          if (colIndex < 0 || colIndex >= COL_COUNT) {
+          const amount = num(group.amount);
+          if (!Number.isFinite(amount)) {
             return;
           }
-          const amount = num(group.amount);
+
+          if (getGroupType(group) === "flat") {
+            const flatNo = normalizeFlatNo(group.flatNo);
+            if (!flatNo) {
+              return;
+            }
+            const flatIndex = flatNo - 1;
+            rowFlatSums[flatIndex] += amount;
+            flatTotals[flatIndex] += amount;
+            return;
+          }
+
+          const colNo = normalizeColNo(group.colNo);
+          if (!colNo) {
+            return;
+          }
+          const colIndex = colNo - 1;
           groupedValues[colIndex].push({
             amount,
             rowNo: rowIndex + 1,
@@ -1466,6 +1588,17 @@
             label: entry.label || ""
           });
           values[colIndex] += amount;
+        });
+
+        rowFlatSums.forEach((amount, flatIndex) => {
+          if (!amount) {
+            return;
+          }
+          flatGroupedValues[flatIndex].push({
+            amount,
+            rowNo: rowIndex + 1,
+            label: entry.label || ""
+          });
         });
       });
 
@@ -1498,6 +1631,44 @@
           container.appendChild(chip);
         });
       });
+
+      flatGroupedValues.forEach((items, index) => {
+        const container = flatValueEls[index];
+        if (!container) {
+          return;
+        }
+        container.innerHTML = "";
+        if (items.length === 0) {
+          return;
+        }
+        items.forEach((item) => {
+          const chip = document.createElement("span");
+          chip.className = "col-value-item";
+          chip.title = item.label
+            ? `第${item.rowNo}条（${item.label}）`
+            : `第${item.rowNo}条`;
+
+          const seq = document.createElement("span");
+          seq.className = "col-value-seq";
+          seq.textContent = `#${item.rowNo}`;
+
+          const amountText = document.createElement("span");
+          amountText.className = "col-value-amount";
+          amountText.textContent = format(item.amount);
+
+          chip.appendChild(seq);
+          chip.appendChild(amountText);
+          container.appendChild(chip);
+        });
+      });
+
+      flatTotals.forEach((value, index) => {
+        const sumCell = flatSumCells[index];
+        if (!sumCell) {
+          return;
+        }
+        sumCell.textContent = format(value);
+      });
     }
 
     function getWinningCol() {
@@ -1505,9 +1676,89 @@
       return winningCol >= 1 && winningCol <= COL_COUNT ? winningCol : 0;
     }
 
+    function getFlatWinningCols() {
+      const matches = String(flatWinningColsEl.value || "").match(/\d+/g) || [];
+      const valuesSet = new Set();
+      for (const token of matches) {
+        const colNo = normalizeColNo(token);
+        if (!colNo) {
+          continue;
+        }
+        valuesSet.add(colNo);
+        if (valuesSet.size >= 6) {
+          break;
+        }
+      }
+      return Array.from(valuesSet);
+    }
+
+    function getFlatWinningTargetSet() {
+      const targetSet = new Set();
+      const winningCol = getWinningCol();
+      if (winningCol) {
+        targetSet.add(winningCol);
+      }
+      const flatWinningCols = getFlatWinningCols();
+      flatWinningCols.forEach((colNo) => targetSet.add(colNo));
+      return targetSet;
+    }
+
     function normalizeColNo(rawCol) {
       const colNo = Math.trunc(num(rawCol));
       return colNo >= 1 && colNo <= COL_COUNT ? colNo : 0;
+    }
+
+    function normalizeFlatNo(rawFlatNo) {
+      const flatNo = Math.trunc(num(rawFlatNo));
+      return flatNo >= 1 && flatNo <= FLAT_GROUPS.length ? flatNo : 0;
+    }
+
+    function getGroupType(group) {
+      if (!group || typeof group !== "object") {
+        return "col";
+      }
+      if (group.type === "flat" || (group.flatNo != null && group.colNo == null)) {
+        return "flat";
+      }
+      return "col";
+    }
+
+    function getGroupDisplayCode(group) {
+      if (getGroupType(group) === "flat") {
+        const flatNo = normalizeFlatNo(group.flatNo);
+        return flatNo > 0 ? `平${flatNo}` : "平?";
+      }
+      const colNo = normalizeColNo(group.colNo);
+      return colNo > 0 ? String(colNo) : "?";
+    }
+
+    function isGroupHitWinner(group, winningCol) {
+      if (getGroupType(group) === "flat") {
+        const flatNo = normalizeFlatNo(group.flatNo);
+        if (!flatNo) {
+          return false;
+        }
+        const targetSet = getFlatWinningTargetSet();
+        if (targetSet.size === 0) {
+          return false;
+        }
+        return FLAT_GROUPS[flatNo - 1].some((colNo) => targetSet.has(colNo));
+      }
+      if (!(winningCol >= 1 && winningCol <= COL_COUNT)) {
+        return false;
+      }
+      return normalizeColNo(group.colNo) === winningCol;
+    }
+
+    function calcGroupWinningAmount(group, winningCol) {
+      if (!isGroupHitWinner(group, winningCol)) {
+        return 0;
+      }
+      const amount = num(group.amount);
+      if (getGroupType(group) === "flat") {
+        return amount * FLAT_MULTIPLIER;
+      }
+      return amount * FIXED_MULTIPLIER;
     }
 
     function getDraftSelectedColNos() {
@@ -1561,6 +1812,9 @@
     }
 
     function toggleDraftColPicker() {
+      if (!rowColPickerEl.classList.contains("open")) {
+        setDraftFlatPickerOpen(false);
+      }
       setDraftColPickerOpen(!rowColPickerEl.classList.contains("open"));
     }
 
@@ -1578,14 +1832,87 @@
       syncDraftColPicker();
     }
 
+    function getDraftSelectedFlatNos() {
+      return Array.from(draftSelectedFlatNos).sort((a, b) => a - b);
+    }
+
+    function syncDraftFlatPicker() {
+      const selectedFlats = getDraftSelectedFlatNos();
+      if (selectedFlats.length === 0) {
+        rowFlatTriggerTextEl.textContent = "请选择平码";
+        rowFlatTriggerEl.title = "请选择平码";
+      } else if (selectedFlats.length <= 4) {
+        const label = selectedFlats.map((flatNo) => `平${flatNo}`).join(", ");
+        rowFlatTriggerTextEl.textContent = label;
+        rowFlatTriggerEl.title = `已选：${label}`;
+      } else {
+        const head = selectedFlats.slice(0, 4).map((flatNo) => `平${flatNo}`).join(", ");
+        const label = `${head} +${selectedFlats.length - 4}`;
+        rowFlatTriggerTextEl.textContent = label;
+        rowFlatTriggerEl.title = `已选：${selectedFlats.map((flatNo) => `平${flatNo}`).join(", ")}`;
+      }
+
+      rowFlatMenuEl.querySelectorAll("button[data-flat-no]").forEach((btn) => {
+        const flatNo = normalizeFlatNo(btn.dataset.flatNo);
+        const selected = draftSelectedFlatNos.has(flatNo);
+        btn.classList.toggle("selected", selected);
+        btn.setAttribute("aria-selected", selected ? "true" : "false");
+      });
+    }
+
+    function setDraftSelectedFlatNos(rawFlatNos) {
+      draftSelectedFlatNos.clear();
+      if (Array.isArray(rawFlatNos)) {
+        rawFlatNos.forEach((rawFlatNo) => {
+          const flatNo = normalizeFlatNo(rawFlatNo);
+          if (flatNo > 0) {
+            draftSelectedFlatNos.add(flatNo);
+          }
+        });
+      }
+      syncDraftFlatPicker();
+    }
+
+    function setDraftFlatPickerOpen(open) {
+      const shouldOpen = Boolean(open);
+      rowFlatPickerEl.classList.toggle("open", shouldOpen);
+      rowFlatTriggerEl.setAttribute("aria-expanded", shouldOpen ? "true" : "false");
+    }
+
+    function toggleDraftFlatPicker() {
+      if (!rowFlatPickerEl.classList.contains("open")) {
+        setDraftColPickerOpen(false);
+      }
+      setDraftFlatPickerOpen(!rowFlatPickerEl.classList.contains("open"));
+    }
+
+    function renderDraftFlatPickerOptions() {
+      rowFlatMenuEl.innerHTML = "";
+      for (let i = 1; i <= FLAT_GROUPS.length; i += 1) {
+        const optionBtn = document.createElement("button");
+        optionBtn.type = "button";
+        optionBtn.className = "multi-col-option";
+        optionBtn.dataset.flatNo = String(i);
+        optionBtn.setAttribute("role", "option");
+        optionBtn.textContent = `平${i}`;
+        rowFlatMenuEl.appendChild(optionBtn);
+      }
+      syncDraftFlatPicker();
+    }
+
     function getRowInlineSelectedColNos() {
       return Array.from(rowInlineDraft.selectedCols).sort((a, b) => a - b);
+    }
+
+    function getRowInlineSelectedFlatNos() {
+      return Array.from(rowInlineDraft.selectedFlats).sort((a, b) => a - b);
     }
 
     function resetRowInlineDraft() {
       rowInlineDraft.rowId = 0;
       rowInlineDraft.amountText = "";
       rowInlineDraft.selectedCols.clear();
+      rowInlineDraft.selectedFlats.clear();
     }
 
     function openRowInlineEditor(rowId) {
@@ -1607,6 +1934,15 @@
       renderRowEntries();
     }
 
+    function toggleRowInlineFlat(flatNo) {
+      if (rowInlineDraft.selectedFlats.has(flatNo)) {
+        rowInlineDraft.selectedFlats.delete(flatNo);
+      } else {
+        rowInlineDraft.selectedFlats.add(flatNo);
+      }
+      renderRowEntries();
+    }
+
     function setRowInlineAmount(value) {
       rowInlineDraft.amountText = String(value || "");
     }
@@ -1621,8 +1957,9 @@
       }
 
       const selectedColNos = getRowInlineSelectedColNos();
-      if (selectedColNos.length === 0) {
-        window.alert("\u8BF7\u81F3\u5C11\u9009\u62E9\u4E00\u4E2A 1-49 \u53F7\u7801\u3002");
+      const selectedFlatNos = getRowInlineSelectedFlatNos();
+      if (selectedColNos.length === 0 && selectedFlatNos.length === 0) {
+        window.alert("请至少选择一个号码或平码。");
         return;
       }
 
@@ -1636,6 +1973,9 @@
       selectedColNos.forEach((colNo) => {
         appendGroupAmount(rowEntries[rowIndex].groups, colNo, amount);
       });
+      selectedFlatNos.forEach((flatNo) => {
+        appendFlatGroupAmount(rowEntries[rowIndex].groups, flatNo, amount);
+      });
       rowEntries[rowIndex].groups = normalizeGroups(rowEntries[rowIndex].groups);
 
       resetRowInlineDraft();
@@ -1647,27 +1987,60 @@
       if (!Array.isArray(rawGroups)) {
         return [];
       }
-      const amountByCol = new Map();
-      const colOrder = [];
+      const amountByKey = new Map();
+      const keyOrder = [];
 
       rawGroups.forEach((group) => {
-        const colNo = normalizeColNo(group && group.colNo);
+        const groupType = getGroupType(group);
         const amount = Number(group && group.amount);
-        if (!colNo || !Number.isFinite(amount)) {
+        if (!Number.isFinite(amount)) {
           return;
         }
-        if (!amountByCol.has(colNo)) {
-          amountByCol.set(colNo, amount);
-          colOrder.push(colNo);
+
+        if (groupType === "flat") {
+          const flatNo = normalizeFlatNo(group && group.flatNo);
+          if (!flatNo) {
+            return;
+          }
+          const key = `flat:${flatNo}`;
+          if (!amountByKey.has(key)) {
+            amountByKey.set(key, amount);
+            keyOrder.push(key);
+            return;
+          }
+          amountByKey.set(key, amountByKey.get(key) + amount);
           return;
         }
-        amountByCol.set(colNo, amountByCol.get(colNo) + amount);
+
+        const colNo = normalizeColNo(group && group.colNo);
+        if (!colNo) {
+          return;
+        }
+        const key = `col:${colNo}`;
+        if (!amountByKey.has(key)) {
+          amountByKey.set(key, amount);
+          keyOrder.push(key);
+          return;
+        }
+        amountByKey.set(key, amountByKey.get(key) + amount);
       });
 
-      return colOrder.map((colNo) => ({
-        colNo,
-        amount: amountByCol.get(colNo)
-      }));
+      return keyOrder.map((key) => {
+        const [type, rawNo] = key.split(":");
+        const amount = amountByKey.get(key);
+        if (type === "flat") {
+          return {
+            type: "flat",
+            flatNo: Number(rawNo),
+            amount
+          };
+        }
+        return {
+          type: "col",
+          colNo: Number(rawNo),
+          amount
+        };
+      });
     }
 
     function normalizeGroups(rawGroups) {
@@ -1684,11 +2057,30 @@
         return false;
       }
 
-      const target = targetGroups.find((group) => group.colNo === colNo);
+      const target = targetGroups.find((group) => getGroupType(group) === "col" && normalizeColNo(group.colNo) === colNo);
       if (target) {
         target.amount = num(target.amount) + amount;
       } else {
-        targetGroups.push({ colNo, amount });
+        targetGroups.push({ type: "col", colNo, amount });
+      }
+      return true;
+    }
+
+    function appendFlatGroupAmount(targetGroups, rawFlatNo, rawAmount) {
+      if (!Array.isArray(targetGroups)) {
+        return false;
+      }
+      const flatNo = normalizeFlatNo(rawFlatNo);
+      const amount = Number(rawAmount);
+      if (!flatNo || !Number.isFinite(amount)) {
+        return false;
+      }
+
+      const target = targetGroups.find((group) => getGroupType(group) === "flat" && normalizeFlatNo(group.flatNo) === flatNo);
+      if (target) {
+        target.amount = num(target.amount) + amount;
+      } else {
+        targetGroups.push({ type: "flat", flatNo, amount });
       }
       return true;
     }
@@ -1700,13 +2092,36 @@
         return false;
       }
 
-      const target = draftRowGroups.find((group) => group.colNo === colNo);
+      const target = draftRowGroups.find((group) => getGroupType(group) === "col" && normalizeColNo(group.colNo) === colNo);
       if (target) {
         target.amount = num(target.amount) + amount;
       } else {
         draftRowGroups.push({
           id: nextDraftGroupId,
+          type: "col",
           colNo,
+          amount
+        });
+        nextDraftGroupId += 1;
+      }
+      return true;
+    }
+
+    function appendDraftFlatGroupAmount(rawFlatNo, rawAmount) {
+      const flatNo = normalizeFlatNo(rawFlatNo);
+      const amount = Number(rawAmount);
+      if (!flatNo || !Number.isFinite(amount)) {
+        return false;
+      }
+
+      const target = draftRowGroups.find((group) => getGroupType(group) === "flat" && normalizeFlatNo(group.flatNo) === flatNo);
+      if (target) {
+        target.amount = num(target.amount) + amount;
+      } else {
+        draftRowGroups.push({
+          id: nextDraftGroupId,
+          type: "flat",
+          flatNo,
           amount
         });
         nextDraftGroupId += 1;
@@ -1974,7 +2389,7 @@
       groups = rawCols
         .map((rawCol) => normalizeColNo(rawCol))
         .filter((colNo) => colNo > 0)
-        .map((colNo) => ({ colNo, amount }));
+        .map((colNo) => ({ type: "col", colNo, amount }));
       return normalizeGroups(groups);
     }
 
@@ -1995,7 +2410,9 @@
           id: rowId,
           label: entry && entry.label != null ? String(entry.label) : "",
           groups: groups.map((group) => ({
+            type: getGroupType(group),
             colNo: group.colNo,
+            flatNo: group.flatNo,
             amount: group.amount
           }))
         });
@@ -2006,17 +2423,20 @@
     function createEmptyPageState() {
       return {
         winningCol: "",
+        flatWinningColsText: "",
         rowEntries: [],
         draftRowLabel: "",
         draftRowGroups: [],
         draftSelectedCols: [],
+        draftSelectedFlatNos: [],
         rowValueInput: "",
         nextRowId: 1,
         nextDraftGroupId: 1,
         rowInlineDraft: {
           rowId: 0,
           amountText: "",
-          selectedCols: []
+          selectedCols: [],
+          selectedFlats: []
         }
       };
     }
@@ -2029,6 +2449,9 @@
 
       const winningCol = normalizeColNo(rawState.winningCol);
       state.winningCol = winningCol > 0 ? String(winningCol) : "";
+      if (rawState.flatWinningColsText != null) {
+        state.flatWinningColsText = String(rawState.flatWinningColsText);
+      }
 
       state.rowEntries = cloneRowEntries(rawState.rowEntries);
       state.draftRowLabel = rawState.draftRowLabel == null ? "" : String(rawState.draftRowLabel);
@@ -2036,7 +2459,9 @@
       const draftGroups = normalizeGroups(rawState.draftRowGroups);
       state.draftRowGroups = draftGroups.map((group, index) => ({
         id: index + 1,
+        type: getGroupType(group),
         colNo: group.colNo,
+        flatNo: group.flatNo,
         amount: group.amount
       }));
 
@@ -2046,6 +2471,15 @@
           selectedCols
             .map((rawCol) => normalizeColNo(rawCol))
             .filter((colNo) => colNo > 0)
+        )
+      ).sort((a, b) => a - b);
+
+      const selectedFlatNos = Array.isArray(rawState.draftSelectedFlatNos) ? rawState.draftSelectedFlatNos : [];
+      state.draftSelectedFlatNos = Array.from(
+        new Set(
+          selectedFlatNos
+            .map((rawFlatNo) => normalizeFlatNo(rawFlatNo))
+            .filter((flatNo) => flatNo > 0)
         )
       ).sort((a, b) => a - b);
 
@@ -2085,6 +2519,15 @@
               .filter((colNo) => colNo > 0)
           )
         ).sort((a, b) => a - b);
+
+        const inlineFlats = Array.isArray(rawInline.selectedFlats) ? rawInline.selectedFlats : [];
+        state.rowInlineDraft.selectedFlats = Array.from(
+          new Set(
+            inlineFlats
+              .map((rawFlatNo) => normalizeFlatNo(rawFlatNo))
+              .filter((flatNo) => flatNo > 0)
+          )
+        ).sort((a, b) => a - b);
       }
 
       if (!state.rowEntries.some((entry) => entry.id === state.rowInlineDraft.rowId)) {
@@ -2098,28 +2541,35 @@
       const winningCol = getWinningCol();
       return {
         winningCol: winningCol > 0 ? String(winningCol) : "",
+        flatWinningColsText: flatWinningColsEl.value,
         rowEntries: rowEntries.map((entry) => ({
           id: entry.id,
           label: entry.label,
-          groups: entry.groups.map((group) => ({
+          groups: normalizeGroups(entry.groups).map((group) => ({
+            type: getGroupType(group),
             colNo: group.colNo,
+            flatNo: group.flatNo,
             amount: group.amount
           }))
         })),
         draftRowLabel: rowLabelInputEl.value,
         draftRowGroups: draftRowGroups.map((group) => ({
           id: group.id,
+          type: getGroupType(group),
           colNo: group.colNo,
+          flatNo: group.flatNo,
           amount: group.amount
         })),
         draftSelectedCols: getDraftSelectedColNos(),
+        draftSelectedFlatNos: getDraftSelectedFlatNos(),
         rowValueInput: rowValueInputEl.value,
         nextDraftGroupId,
         nextRowId,
         rowInlineDraft: {
           rowId: rowInlineDraft.rowId,
           amountText: rowInlineDraft.amountText,
-          selectedCols: getRowInlineSelectedColNos()
+          selectedCols: getRowInlineSelectedColNos(),
+          selectedFlats: getRowInlineSelectedFlatNos()
         }
       };
     }
@@ -2128,6 +2578,7 @@
       const state = normalizePageState(stateInput);
 
       winningColEl.value = state.winningCol;
+      flatWinningColsEl.value = state.flatWinningColsText || "";
       rowLabelInputEl.value = state.draftRowLabel;
       rowValueInputEl.value = state.rowValueInput;
 
@@ -2136,8 +2587,10 @@
         rowEntries.push({
           id: entry.id,
           label: entry.label,
-          groups: entry.groups.map((group) => ({
+          groups: normalizeGroups(entry.groups).map((group) => ({
+            type: getGroupType(group),
             colNo: group.colNo,
+            flatNo: group.flatNo,
             amount: group.amount
           }))
         });
@@ -2147,7 +2600,9 @@
       state.draftRowGroups.forEach((group) => {
         draftRowGroups.push({
           id: group.id,
+          type: getGroupType(group),
           colNo: group.colNo,
+          flatNo: group.flatNo,
           amount: group.amount
         });
       });
@@ -2156,7 +2611,9 @@
       nextDraftGroupId = state.nextDraftGroupId;
 
       setDraftSelectedCols(state.draftSelectedCols, false);
+      setDraftSelectedFlatNos(state.draftSelectedFlatNos);
       setDraftColPickerOpen(false);
+      setDraftFlatPickerOpen(false);
 
       resetRowInlineDraft();
       const inlineRowId = Math.trunc(Number(state.rowInlineDraft.rowId));
@@ -2166,6 +2623,9 @@
       rowInlineDraft.amountText = state.rowInlineDraft.amountText || "";
       state.rowInlineDraft.selectedCols.forEach((colNo) => {
         rowInlineDraft.selectedCols.add(colNo);
+      });
+      state.rowInlineDraft.selectedFlats.forEach((flatNo) => {
+        rowInlineDraft.selectedFlats.add(flatNo);
       });
     }
 
@@ -2179,25 +2639,32 @@
         rowEntries: state.rowEntries.map((entry) => ({
           id: entry.id,
           label: entry.label,
-          groups: entry.groups.map((group) => ({
+          groups: normalizeGroups(entry.groups).map((group) => ({
+            type: getGroupType(group),
             colNo: group.colNo,
+            flatNo: group.flatNo,
             amount: group.amount
           }))
         })),
+        flatWinningColsText: state.flatWinningColsText || "",
         draftRowLabel: state.draftRowLabel,
         draftRowGroups: state.draftRowGroups.map((group) => ({
           id: group.id,
+          type: getGroupType(group),
           colNo: group.colNo,
+          flatNo: group.flatNo,
           amount: group.amount
         })),
         draftSelectedCols: state.draftSelectedCols.slice(),
+        draftSelectedFlatNos: state.draftSelectedFlatNos.slice(),
         rowValueInput: state.rowValueInput,
         nextDraftGroupId: state.nextDraftGroupId,
         nextRowId: state.nextRowId,
         rowInlineDraft: {
           rowId: state.rowInlineDraft.rowId,
           amountText: state.rowInlineDraft.amountText,
-          selectedCols: state.rowInlineDraft.selectedCols.slice()
+          selectedCols: state.rowInlineDraft.selectedCols.slice(),
+          selectedFlats: state.rowInlineDraft.selectedFlats.slice()
         }
       };
     }
@@ -2233,15 +2700,14 @@
       return calcRowTotal(entry) * FIXED_REBATE_RATE;
     }
 
+    function calcRowWinningAmount(entry, winningCol) {
+      return entry.groups.reduce((sum, group) => sum + calcGroupWinningAmount(group, winningCol), 0);
+    }
+
     function calcSingleRowResult(entry, winningCol) {
       const rowTotal = calcRowTotal(entry);
       const rebatePart = calcRowRebate(entry);
-      const winPart = entry.groups.reduce((sum, group) => {
-        if (group.colNo !== winningCol) {
-          return sum;
-        }
-        return sum + num(group.amount) * FIXED_MULTIPLIER;
-      }, 0);
+      const winPart = calcRowWinningAmount(entry, winningCol);
       return winPart + rebatePart - rowTotal;
     }
 
@@ -2256,10 +2722,10 @@
       draftRowGroups.forEach((group) => {
         const chip = document.createElement("div");
         chip.className = "group-chip";
-        if (group.colNo === winningCol) {
+        if (isGroupHitWinner(group, winningCol)) {
           chip.classList.add("winner");
         }
-        chip.textContent = `${group.colNo} = ${format(group.amount)}`;
+        chip.textContent = `${getGroupDisplayCode(group)} = ${format(group.amount)}`;
 
         const deleteBtn = document.createElement("button");
         deleteBtn.type = "button";
@@ -2292,7 +2758,7 @@
         const rowRebate = calcRowRebate(entry);
         const rowResult = calcSingleRowResult(entry, winningCol);
         const tr = document.createElement("tr");
-        const rowHitWinner = entry.groups.some((group) => group.colNo === winningCol);
+        const rowHitWinner = entry.groups.some((group) => isGroupHitWinner(group, winningCol));
         if (rowHitWinner) {
           tr.classList.add("row-hit-winner");
         }
@@ -2315,17 +2781,22 @@
 
           const colTag = document.createElement("span");
           colTag.className = "group-col-tag";
-          if (RED_MARKS.has(group.colNo)) {
-            colTag.classList.add("mark-red");
-          } else if (BLUE_MARKS.has(group.colNo)) {
-            colTag.classList.add("mark-blue");
-          } else if (GREEN_MARKS.has(group.colNo)) {
-            colTag.classList.add("mark-green");
+          if (getGroupType(group) === "flat") {
+            colTag.classList.add("mark-flat");
+          } else {
+            const colNo = normalizeColNo(group.colNo);
+            if (RED_MARKS.has(colNo)) {
+              colTag.classList.add("mark-red");
+            } else if (BLUE_MARKS.has(colNo)) {
+              colTag.classList.add("mark-blue");
+            } else if (GREEN_MARKS.has(colNo)) {
+              colTag.classList.add("mark-green");
+            }
           }
-          if (group.colNo === winningCol) {
+          if (isGroupHitWinner(group, winningCol)) {
             colTag.classList.add("winner");
           }
-          colTag.textContent = String(group.colNo);
+          colTag.textContent = getGroupDisplayCode(group);
 
           const amountText = document.createElement("span");
           amountText.className = "group-amount-text";
@@ -2336,7 +2807,7 @@
           removeBtn.className = "group-detail-remove";
           removeBtn.dataset.groupRemoveRow = String(entry.id);
           removeBtn.dataset.groupIndex = String(groupIndex);
-          removeBtn.title = "\u5220\u9664\u8BE5\u53F7\u7801";
+          removeBtn.title = "\u5220\u9664\u8BE5\u9879";
           removeBtn.textContent = "×";
 
           groupItem.appendChild(colTag);
@@ -2398,8 +2869,30 @@
             colGrid.appendChild(colBtn);
           }
 
+          const flatTitle = document.createElement("div");
+          flatTitle.className = "row-inline-grid-title";
+          flatTitle.textContent = "平码（命中 x2）";
+
+          const flatGrid = document.createElement("div");
+          flatGrid.className = "row-inline-flat-grid";
+          const selectedFlats = rowInlineDraft.selectedFlats;
+          for (let flatNo = 1; flatNo <= FLAT_GROUPS.length; flatNo += 1) {
+            const flatBtn = document.createElement("button");
+            flatBtn.type = "button";
+            flatBtn.className = "row-inline-col-btn";
+            if (selectedFlats.has(flatNo)) {
+              flatBtn.classList.add("selected");
+            }
+            flatBtn.dataset.rowInlineFlat = String(flatNo);
+            flatBtn.dataset.rowInlineTarget = String(entry.id);
+            flatBtn.textContent = `平${flatNo}`;
+            flatGrid.appendChild(flatBtn);
+          }
+
           editor.appendChild(editorTop);
           editor.appendChild(colGrid);
+          editor.appendChild(flatTitle);
+          editor.appendChild(flatGrid);
           groupsWrap.appendChild(editor);
         }
 
@@ -2443,11 +2936,12 @@
 
     function addDraftGroup() {
       const selectedColNos = getDraftSelectedColNos();
+      const selectedFlatNos = getDraftSelectedFlatNos();
       const rawAmount = rowValueInputEl.value.trim();
       const amount = Number(rawAmount);
 
-      if (selectedColNos.length === 0) {
-        window.alert("\u8BF7\u81F3\u5C11\u9009\u62E9\u4E00\u4E2A 1-49 \u53F7\u7801\u3002");
+      if (selectedColNos.length === 0 && selectedFlatNos.length === 0) {
+        window.alert("请至少选择一个号码或平码。");
         return;
       }
 
@@ -2459,9 +2953,15 @@
       selectedColNos.forEach((colNo) => {
         appendDraftGroupAmount(colNo, amount);
       });
+      selectedFlatNos.forEach((flatNo) => {
+        appendDraftFlatGroupAmount(flatNo, amount);
+      });
       draftSelectedCols.clear();
+      draftSelectedFlatNos.clear();
       syncDraftColPicker();
+      syncDraftFlatPicker();
       setDraftColPickerOpen(false);
+      setDraftFlatPickerOpen(false);
       rowValueInputEl.value = "";
       renderDraftGroups();
       saveData();
@@ -2495,7 +2995,9 @@
         id: nextRowId,
         label,
         groups: normalizeGroups(draftRowGroups.map((group) => ({
+          type: getGroupType(group),
           colNo: group.colNo,
+          flatNo: group.flatNo,
           amount: group.amount
         })))
       };
@@ -2504,6 +3006,7 @@
 
       rowLabelInputEl.value = "";
       clearDraftRow();
+      setDraftSelectedFlatNos([]);
       rowValueInputEl.value = "";
 
       updateAll();
@@ -2544,7 +3047,7 @@
       }
 
       const group = entry.groups[groupIndex];
-      const groupText = `${group.colNo} = ${format(group.amount)}`;
+      const groupText = `${getGroupDisplayCode(group)} = ${format(group.amount)}`;
       const message = entry.groups.length === 1
         ? `\u786E\u5B9A\u5220\u9664\u300C${groupText}\u300D\u5417\uFF1F\u5220\u9664\u540E\u8BE5\u6761\u8BB0\u5F55\u4F1A\u4E00\u5E76\u79FB\u9664\u3002`
         : `\u786E\u5B9A\u5220\u9664\u300C${groupText}\u300D\u5417\uFF1F`;
@@ -2620,6 +3123,8 @@
 
       pageStates[1].winningCol = "";
       pageStates[2].winningCol = "";
+      pageStates[1].flatWinningColsText = "";
+      pageStates[2].flatWinningColsText = "";
       applyPageState(pageStates[currentPage]);
       updatePageNavState();
     }
@@ -2659,6 +3164,38 @@
         columnValueEls.push(valueBox);
         sumCells.push(sumCell);
       }
+    }
+
+    function createFlatColumns() {
+      FLAT_GROUPS.forEach((group, flatIndex) => {
+        const colCard = document.createElement("div");
+        colCard.className = "col-card";
+        colCard.title = `平${flatIndex + 1}: ${group.join(", ")}`;
+
+        const header = document.createElement("div");
+        header.className = "col-head";
+        header.textContent = `平${flatIndex + 1}`;
+
+        const inputWrap = document.createElement("div");
+        inputWrap.className = "col-input-wrap";
+
+        const valueBox = document.createElement("div");
+        valueBox.className = "col-values";
+        inputWrap.appendChild(valueBox);
+
+        const sumCell = document.createElement("div");
+        sumCell.className = "col-sum";
+        sumCell.textContent = "0";
+
+        colCard.appendChild(header);
+        colCard.appendChild(inputWrap);
+        colCard.appendChild(sumCell);
+        flatGridEl.appendChild(colCard);
+
+        flatCards.push(colCard);
+        flatValueEls.push(valueBox);
+        flatSumCells.push(sumCell);
+      });
     }
 
     function getCollapsedFirstRowHeight() {
@@ -2706,19 +3243,23 @@
       columnCards.forEach((card, i) => {
         card.classList.toggle("winner", i === winningCol - 1);
       });
+      const flatWinningTargetSet = getFlatWinningTargetSet();
+      const hasFlatWinningTarget = flatWinningTargetSet.size > 0;
+      flatCards.forEach((card, flatIndex) => {
+        const isWinnerGroup = hasFlatWinningTarget && FLAT_GROUPS[flatIndex].some((colNo) => flatWinningTargetSet.has(colNo));
+        card.classList.toggle("winner", isWinnerGroup);
+      });
     }
 
     function updateAll() {
       rebuildColumnDisplayAndValues();
       const rebateRate = FIXED_REBATE_RATE;
-      const multiplier = FIXED_MULTIPLIER;
       const winningCol = Math.trunc(num(winningColEl.value));
 
-      const grandTotal = values.reduce((sum, v) => sum + num(v), 0);
-      const winningValue = winningCol >= 1 && winningCol <= COL_COUNT ? values[winningCol - 1] : 0;
+      const grandTotal = rowEntries.reduce((sum, entry) => sum + calcRowTotal(entry), 0);
+      const winningAmount = rowEntries.reduce((sum, entry) => sum + calcRowWinningAmount(entry, winningCol), 0);
 
       const rebate = grandTotal * rebateRate;
-      const winningAmount = winningValue * multiplier;
       const finalResult = winningAmount + rebate - grandTotal;
 
       values.forEach((v, i) => {
@@ -2760,6 +3301,10 @@
       updateAll();
       saveData();
     });
+    flatWinningColsEl.addEventListener("input", () => {
+      updateAll();
+      saveData();
+    });
     authSubmitBtnEl.addEventListener("click", tryEnterPage);
     authPasswordEl.addEventListener("keydown", (event) => {
       if (event.key === "Enter") {
@@ -2780,6 +3325,9 @@
     rowColTriggerEl.addEventListener("click", () => {
       toggleDraftColPicker();
     });
+    rowFlatTriggerEl.addEventListener("click", () => {
+      toggleDraftFlatPicker();
+    });
     rowColMenuEl.addEventListener("click", (event) => {
       const optionBtn = event.target.closest("button[data-col-no]");
       if (!optionBtn) {
@@ -2797,9 +3345,29 @@
       syncDraftColPicker();
       saveData();
     });
+    rowFlatMenuEl.addEventListener("click", (event) => {
+      const optionBtn = event.target.closest("button[data-flat-no]");
+      if (!optionBtn) {
+        return;
+      }
+      const flatNo = normalizeFlatNo(optionBtn.dataset.flatNo);
+      if (!flatNo) {
+        return;
+      }
+      if (draftSelectedFlatNos.has(flatNo)) {
+        draftSelectedFlatNos.delete(flatNo);
+      } else {
+        draftSelectedFlatNos.add(flatNo);
+      }
+      syncDraftFlatPicker();
+      saveData();
+    });
     document.addEventListener("pointerdown", (event) => {
       if (!rowColPickerEl.contains(event.target)) {
         setDraftColPickerOpen(false);
+      }
+      if (!rowFlatPickerEl.contains(event.target)) {
+        setDraftFlatPickerOpen(false);
       }
     });
     toggleColumnRowsBtnEl.addEventListener("click", toggleColumnRowsFold);
@@ -2840,6 +3408,17 @@
           return;
         }
         toggleRowInlineCol(normalizeColNo(colNo));
+        return;
+      }
+
+      const inlineFlatBtn = event.target.closest("button[data-row-inline-flat]");
+      if (inlineFlatBtn) {
+        const targetRowId = Number(inlineFlatBtn.dataset.rowInlineTarget);
+        const flatNo = Number(inlineFlatBtn.dataset.rowInlineFlat);
+        if (!Number.isFinite(targetRowId) || !Number.isFinite(flatNo) || rowInlineDraft.rowId !== targetRowId) {
+          return;
+        }
+        toggleRowInlineFlat(normalizeFlatNo(flatNo));
         return;
       }
 
@@ -2929,9 +3508,12 @@
     });
 
     createColumns();
+    createFlatColumns();
     renderDraftColPickerOptions();
+    renderDraftFlatPickerOptions();
     restoreData();
     syncDraftColPicker();
+    syncDraftFlatPicker();
     renderDraftGroups();
     updateAll();
     updateColumnRowsCollapsedHeight();
